@@ -8,17 +8,12 @@ from notion_blocks import NotionBlock, BookmarkBlock, BreadcrumbBlock, BulletIte
     QuoteBlock, SyncedBlockSource, SyncedBlockDuplicate, TableBlock, TableOfContentsBlock, \
     ToDoBlock, ToggleBlock, VideoBlock
 
-# from emoji import UNICODE_EMOJI
+
 
 NOTION_COLORS = {
     'gray', 'lightgray', 'brown', 'yellow', 'orange',
     'green', 'blue', 'purple', 'pink', 'red'
 }
-
-
-def is_emoji(s):
-    return len(s) == 1
-    # return s in UNICODE_EMOJI
 
 
 class NotionClient:
@@ -48,6 +43,8 @@ class NotionClient:
         return headers
 
     def connect_database(self, database_id):
+        # self.databases[database_id] = NotionDB(self, database_id)
+        # return database_id
         db_obj = NotionDB(self, database_id)
         self.databases[database_id] = db_obj
         return db_obj
@@ -74,7 +71,6 @@ class NotionDB:
     def add_entry(self, entry_properties, debug=False):
         """
         Adds a new 'page' (entry) to the database specified by DATABASE_ID
-        # properties reference: https://developers.notion.com/reference/property-object#multi-select
         :param entry_properties: a dictionary storing the parameters to be input for the database entry, e.g.
             db_data = {
                 "Title": {"title": [{"text": {"content": "This is the recipe title."}}]},
@@ -93,14 +89,14 @@ class NotionDB:
             print(f"{res.status_code}: Error during entry addition")
 
         if debug:
-            print(res, res.content)
+            print(res)
 
         return res
 
     # https://medium.com/@plasmak_/how-to-create-a-notion-page-using-python-9994bf01299
     def edit_entry_page(self, entry_page_id, page_content: dict, debug=False):
         """
-        Performs a PATCH request to update th content of the database entry Title page
+        Performs a PATCH request to update the content of the database entry Title page
         :param entry_page_id: hex string representing the page id, e.g.
             page_block_id = "faeb6c55-e216-46d1-abed-2b706443d48a"
         :param page_content: a JSON-like dictionary containing the content to be added to the page
@@ -116,7 +112,7 @@ class NotionDB:
             print(f"{res.status_code}: Error during entry editing")
 
         if debug:
-            print(res, res.content)
+            print(res)
 
         return res
 
@@ -235,6 +231,24 @@ class NotionDB:
 
         return results
 
+    def get_database_obj(self, debug=False):
+        """
+        Retrieves the database object as columns rather than rows/pages
+        https://developers.notion.com/reference/retrieve-a-database
+        :param debug:
+        :return:
+        """
+
+        url = f"https://api.notion.com/v1/databases/{self.database_id}"
+
+        response = requests.get(url, headers=self.client.headers)
+
+        data = response.json()
+        if debug:
+            print(json.dumps(data, indent=2))
+
+        return data
+
     # https://www.pynotion.com/getting-started-with-python
     def get_page_content(self, page_id):
         res = requests.get(f"https://api.notion.com/v1/blocks/{page_id}/children", headers=self.client.headers)
@@ -313,23 +327,3 @@ class NotionPage:
             return response_obj
         else:
             return response_obj.get('results')[0].get('id')
-
-
-class NotionDatabaseEntry:
-    def __init__(self, entry_json):
-        self.entry_json = entry_json
-
-        self.page_id = self.entry_json.get('id')
-        self.cover = self.entry_json.get('cover')
-        self.icon = self.entry_json.get('icon')
-        self.parent_db = self.entry_json.get('parent').get('database_id')
-        self.properties = self.entry_json.get('properties')
-
-    def get_properties(self):
-        return self.properties
-
-    def get_page_id(self):
-        return self.page_id
-
-    def get_cover(self):
-        return self.cover
